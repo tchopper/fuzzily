@@ -14,6 +14,7 @@ Gem::Specification.new do |gem|
   gem.license       = 'MIT'
 
   gem.add_runtime_dependency 'activerecord', '>= 2.3.17'
+  gem.add_runtime_dependency 'fuzzy-string-match'
 
   gem.add_development_dependency 'rspec'
   gem.add_development_dependency 'rake'

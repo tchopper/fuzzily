@@ -43,6 +43,8 @@ module Fuzzily
       def _find_by_fuzzy(_o, pattern, options={})
         options[:limit] ||= 10
         options[:offset] ||= 0
+        # Christer:
+        options[:distance_filter] || [] # ex: [["lastname", "Andersson", 0.5], ["firstname", "Bob", 0.5]]
 
         trigrams = _o.trigram_class_name.constantize.
           # Christer 2a) Don't apply limit yet
@@ -53,29 +55,37 @@ module Fuzzily
           matches_for(pattern)
         # Christer 2b) Send limit param along
         # records = _load_for_ids(trigrams.map(&:owner_id))
-        records = _load_for_ids1(trigrams.map(&:owner_id), options[:limit])
+        records = _load_for_ids(trigrams.map(&:owner_id), options[:limit], options[:distance_filter])
         # order records as per trigram query (no portable way to do this in SQL)
         trigrams.map { |t| records[t.owner_id] }.compact
       end
 
-      def _load_for_ids(ids)
-        {}.tap do |result|
-          # Christer 1): breaks if object with id is not found (eg. we're applying fuzzy search to scope)
-          # find(ids).each { |_r| result[_r.id] = _r }
-          # Replace with
-          ids.each{|id|
-            result[id] = find_by_id(id) if find_by_id(id).present?
-          }
-        end
-      end
+      # def _load_for_ids_original(ids)
+      #   {}.tap do |result|
+      #     # Christer 1): breaks if object with id is not found (eg. we're applying fuzzy search to scope)
+      #     # find(ids).each { |_r| result[_r.id] = _r }
+      #     # Replace with
+      #     ids.each{|id|
+      #       result[id] = find_by_id(id) if find_by_id(id).present?
+      #     }
+      #   end
+      # end
 
-      # Christer 2c) Apply params[:limit]  while creating the hash
-      def _load_for_ids1(ids, limit)
+      def _load_for_ids(ids, limit, filters)
+        jarow = FuzzyStringMatch::JaroWinkler.create( :native )
         {}.tap do |result|
           ids.each{|id|
-            if find_by_id(id).present?
-              result[id] = find_by_id(id)
-              break if ((limit-=1) == 0)
+            if (needle = find_by_id(id)).present?
+              # Trace for Debugging:
+              # distances = filters.present? ? filters.collect{|f| jarow.getDistance(needle.read_attribute(f[0]), f[1])} : []
+              # Rails.logger.debug "For #{needle.name}: #{distances.inspect}"
+              #
+              skip = false
+              filters.each{|f| break if skip = jarow.getDistance(needle.read_attribute(f[0]), f[1]) < f[2]} if filters.present?
+              unless skip
+                result[id] = find_by_id(id)
+                break if ((limit-=1) == 0)
+              end
             end
           }
         end
