@@ -168,6 +168,32 @@ class Employee < ActiveRecord::Base
 end
 ```
 
+## Limit the returned matches using the Jaro-Winkler distance
+
+The basic trigram fuzzy search returns a list of the best trigram matches. You can set the number of returned matches using the :limit
+parameter (defaults to 10). However it may very well be the case that some of the returned results, say number 9 and 10, have very
+little ressemblance with the search pattern. We therefore add a set of distance filters that allow you to filter out any item whose
+ressemblance with the pattern falls below a given threshold. For this we rely on the Jaro-Winkler distance, as implemented by the
+fuzzy-string-match gem.
+
+In order to allow best flexibility, the Jaro-Winkler distance threshold may be measured against one or several attributes of the
+model, which do not have to be the same attribute as the one used for the trigram matching. A useful example to explain this is when
+your (person/user) model has attributes 'firstname' and 'lastname' and you also have a virtual attribute 'name' which is the concatenation
+of the other two. In your person/user model you could do:
+
+```ruby
+fuzzily_searchable :name
+```
+
+then to perform a search you could do:
+
+```ruby
+Person.find\_by\_fuzzy\_name("John Smith",
+          {:distance_filter =>[["lastname", "Smith", 0.6], ["firstname", "John", 0.5]]})
+```
+In this case, the results returned would exclude any person where the Jaro-Winkler measure is below 0.6 for the lastname or 0.5 for
+the firstname (The Jaro-Winkler measure is a floating point number between 0 and 1, where 0 means no match and 1 perfect match).
+
 ## Extensions provided compared to the original gem
 
 This version of fuzzily contains experimental extensions to the [original gem](https://github.com/mezis/fuzzily). Unless you seriously want some of the extensions - further described below - please use the original gem.
@@ -175,6 +201,7 @@ This version of fuzzily contains experimental extensions to the [original gem](h
 - Branch mass\_assignment: Avoid problems related to mass-assignment (this feature is now merged into the original gem)
 - Branch apply\_on\_scope: same as mass\_assignment + makes it possible to apply find\_by\_fuzzy on a relation/scope, like for example:
     Person.where('country = ?', "France").find_by_fuzzy_name(the_name, :limit => 20)
+- Branch distance: same as apply\_on\_scope + limit the returned matches to those that satisfy aditing distance conditions, using the Jaro-Winkler distance algorithm. 
 
 
 
