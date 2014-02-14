@@ -45,6 +45,7 @@ module Fuzzily
         options[:offset] ||= 0
         # Christer:
         options[:distance_filter] || [] # ex: [["lastname", "Andersson", 0.5], ["firstname", "Bob", 0.5]]
+        options[:limit_on_distance] || false # Return all until we reach the distance filter
 
         trigrams = _o.trigram_class_name.constantize.
           # Christer 2a) Don't apply limit yet
@@ -55,7 +56,7 @@ module Fuzzily
           matches_for(pattern)
         # Christer 2b) Send limit param along
         # records = _load_for_ids(trigrams.map(&:owner_id))
-        records = _load_for_ids(trigrams.map(&:owner_id), options[:limit], options[:distance_filter])
+        records = _load_for_ids(trigrams.map(&:owner_id), options[:limit], options[:distance_filter], options[:limit_on_distance])
         # order records as per trigram query (no portable way to do this in SQL)
         trigrams.map { |t| records[t.owner_id] }.compact
       end
@@ -71,7 +72,7 @@ module Fuzzily
       #   end
       # end
 
-      def _load_for_ids(ids, limit, filters)
+      def _load_for_ids(ids, limit, filters, limit_on_distance)
         jarow = FuzzyStringMatch::JaroWinkler.create( :native )
         {}.tap do |result|
           ids.each{|id|
@@ -84,7 +85,7 @@ module Fuzzily
               filters.each{|f| break if skip = jarow.getDistance(needle.read_attribute(f[0]), f[1]) < f[2]} if filters.present?
               unless skip
                 result[id] = find_by_id(id)
-                break if ((limit-=1) == 0)
+                break if (!limit_on_distance && (limit-=1) == 0)
               end
             end
           }

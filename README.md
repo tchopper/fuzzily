@@ -202,7 +202,8 @@ This version of fuzzily contains experimental extensions to the [original gem](h
 - Branch apply\_on\_scope: same as mass\_assignment + makes it possible to apply find\_by\_fuzzy on a relation/scope, like for example:
     Person.where('country = ?', "France").find_by_fuzzy_name(the_name, :limit => 20)
 - Branch distance: same as apply\_on\_scope + limit the returned matches to those that satisfy aditing distance conditions, using the Jaro-Winkler distance algorithm. 
-- Branch master: all extensions (currently same as distance)
+- Branch limit_by_distance: boolean. If true, the limit option (which defaults to 10) is not used, only the distance conditions. Default: false
+- Branch master: all extensions
 
 
 
