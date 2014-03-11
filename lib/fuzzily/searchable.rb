@@ -82,7 +82,9 @@ module Fuzzily
               # Rails.logger.debug "For #{needle.name}: #{distances.inspect}"
               #
               skip = false
-              filters.each{|f| break if skip = jarow.getDistance(needle.read_attribute(f[0]), f[1]) < f[2]} if filters.present?
+              # If we want to check difference against virtual attributes we need to use send and not read_attribute
+              # filters.each{|f| break if skip = jarow.getDistance(needle.read_attribute(f[0]), f[1]) < f[2]} if filters.present?
+              filters.each{|f| break if skip = jarow.getDistance(needle.send(f[0]), f[1]) < f[2]} if filters.present?
               unless skip
                 result[id] = find_by_id(id)
                 break if (!limit_on_distance && (limit-=1) == 0)
