@@ -141,16 +141,14 @@ module Fuzzily
 
       def make_field_fuzzily_searchable(field, options={})
         class_variable_defined?(:"@@fuzzily_searchable_#{field}") and return
-
         _o = OpenStruct.new(
           :field                  => field,
           :trigram_class_name     => options.fetch(:class_name, 'Trigram'),
           :trigram_association    => "trigrams_for_#{field}".to_sym,
-          :update_trigrams_method => "update_fuzzy_#{field}!".to_sym
+          :update_trigrams_method => "update_fuzzy_#{field}!".to_sym,
+          :async                  => options.fetch(:async, false)
         )
-
         _add_trigram_association(_o)
-
         singleton_class.send(:define_method,"find_by_fuzzy_#{field}".to_sym) do |*args|
           _find_by_fuzzy(_o, *args)
         end
@@ -158,6 +156,7 @@ module Fuzzily
         singleton_class.send(:define_method,"bulk_update_fuzzy_#{field}".to_sym) do
           _bulk_update_fuzzy(_o)
         end
+        
 
         define_method _o.update_trigrams_method do
           _update_fuzzy!(_o)
@@ -165,7 +164,12 @@ module Fuzzily
 
         after_save do |record|
           next unless record.send("#{field}_changed?".to_sym)
-          record.send(_o.update_trigrams_method)
+
+          if _o.async && Object.const_defined?(_o.async.to_s) && _o.async.respond_to?(:perform_later)
+            _o.async.perform_later({:object => self.class.name, :method=> _o.update_trigrams_method.to_s, :id=> self.id})
+          else
+            record.send(_o.update_trigrams_method)
+          end
         end
 
         class_variable_set(:"@@fuzzily_searchable_#{field}", true)
