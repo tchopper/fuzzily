@@ -72,10 +72,34 @@ module Fuzzily
       #   end
       # end
 
+      #  def _load_for_ids(ids, limit, filters, limit_on_distance)
+      #   jarow = FuzzyStringMatch::JaroWinkler.create( :native )
+      #   {}.tap do |result|
+      #     ids.each{|id|
+      #       p id
+      #       if (needle = find_by_id(id)).present?
+      #         # Trace for Debugging:
+      #         # distances = filters.present? ? filters.collect{|f| jarow.getDistance(needle.read_attribute(f[0]), f[1])} : []
+      #         # Rails.logger.debug "For #{needle.name}: #{distances.inspect}"
+      #         #
+      #         skip = false
+      #         # If we want to check difference against virtual attributes we need to use send and not read_attribute
+      #         # filters.each{|f| break if skip = jarow.getDistance(needle.read_attribute(f[0]), f[1]) < f[2]} if filters.present?
+      #         filters.each{|f| break if skip = jarow.getDistance(needle.send(f[0]), f[1]) < f[2]} if filters.present?
+      #         unless skip
+      #           result[id] = find_by_id(id)
+      #           break if (!limit_on_distance && (limit-=1) == 0)
+      #         end
+      #       end
+      #     }
+      #   end
+      # end
+
       def _load_for_ids(ids, limit, filters, limit_on_distance)
         jarow = FuzzyStringMatch::JaroWinkler.create( :native )
         {}.tap do |result|
-          where(:id => ids).each{|search|
+          where(:id => ids).order("FIELD(id, #{ids.join(',')})").each{|search|
+            p search.id
             # Trace for Debugging:
             # distances = filters.present? ? filters.collect{|f| jarow.getDistance(search.read_attribute(f[0]), f[1])} : []
             # Rails.logger.debug "For #{search.name}: #{distances.inspect}"
