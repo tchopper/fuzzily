@@ -54,6 +54,7 @@ module Fuzzily
           for_model(self.name).
           for_field(_o.field.to_s).
           matches_for(pattern)
+        return [] if trigrams.blank?
         # Christer 2b) Send limit param along
         # records = _load_for_ids(trigrams.map(&:owner_id))
         records = _load_for_ids(trigrams.map(&:owner_id), options[:limit], options[:distance_filter], options[:limit_on_distance])
